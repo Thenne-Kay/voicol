@@ -83,7 +83,7 @@ def read_test_data(freq , RATE, fig_par):
     update(data, fig, ax2, line, line_fft, x_fft)
 
 
-def update(data,fig,ax_color,line,line_fft,x_fft,count=0,interval=2,CHUNK=1024*2) :
+def update(data,fig,ax_color,line,line_fft,x_fft,count=0,interval=3,CHUNK=1024*2) :
     dataInt = struct.unpack(str(CHUNK) + "h", data)
     line.set_ydata(dataInt)
     y_fft = np.abs(np.fft.fft(dataInt)) / (11000 * CHUNK)
