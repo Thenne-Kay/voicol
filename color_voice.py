@@ -13,7 +13,7 @@ def filtre(arr, lim):
     return arr * mask
 
 
-def colr(y_fft, x_fft):
+def colr_mix(y_fft, x_fft):
     x_norm=((x_fft[:300]/x_fft[299])*9)+1  #upper limit of freq ==6463
     x_norm=np.log10(x_norm)
     rgba = cmap(x_norm)
@@ -30,6 +30,28 @@ def colr(y_fft, x_fft):
             rgba_a[i] = 1.0
 
     return rgba_a
+
+
+
+def normalize_scale(scale,lim=300) :
+    scale_norm = ((scale[:lim] / scale[lim-1]) * 9) + 1
+    scale_norm=np.log10(scale_norm)
+    
+    return scale_norm
+
+
+def colr(y_fft, x_norm, lim=300, filter_low=0.01):
+    # y_fft=filtre(y_fft,0.001)
+    weights = (y_fft[:lim] / np.max(y_fft[:lim]))
+    weights=filtre(weights,filter_low) * 100
+    weights = weights.astype(np.int64)
+    
+    x_rms = np.average(x_norm**2, axis=0, weights=weights)
+    x_rms=np.sqrt(x_rms)
+
+    rgba=cmap(x_rms)
+
+    return rgba
 
 
 def test_signal(freq, x, RATE=44100):
@@ -73,24 +95,27 @@ def make_fig(RATE=44100, CHUNK=2*1024) :
 
 def read_stream_data(stream, CHUNK, RATE, duration, fig_par):
     fig, ax2, line, line_fft, _,x_fft=fig_par
+    x_norm=normalize_scale(x_fft,lim=300)
+    
     for i in range(int(RATE / CHUNK * duration/4)):
         data = stream.read(CHUNK)
-        update(data, fig, ax2, line, line_fft, x_fft,i)
+        update(data, fig, ax2, line, line_fft, x_norm,i)
 
 def read_test_data(freq , RATE, fig_par):
     fig, ax2, line, line_fft, x, x_fft=fig_par
+    x_norm=normalize_scale(x_fft,lim=300)
     data = test_signal(freq, x, RATE)
-    update(data, fig, ax2, line, line_fft, x_fft)
+    update(data, fig, ax2, line, line_fft, x_norm)
 
 
-def update(data,fig,ax_color,line,line_fft,x_fft,count=0,interval=3,CHUNK=1024*2) :
+def update(data,fig,ax_color,line,line_fft,x_norm,count=0,interval=3,CHUNK=1024*2) :
     dataInt = struct.unpack(str(CHUNK) + "h", data)
     line.set_ydata(dataInt)
     y_fft = np.abs(np.fft.fft(dataInt)) / (11000 * CHUNK)
     line_fft.set_ydata(y_fft)
 
     if count % interval == 0:
-        color_mark = colr(y_fft, x_fft)
+        color_mark = colr(y_fft, x_norm)
         line_fft.set_color(color_mark)
         line.set_color(color_mark)
         ax_color.set_facecolor(color_mark)
@@ -106,14 +131,14 @@ def main():
     CHANNELS = 2
     RATE = 44100  # in Hz
 
-    STREAM=make_stream(CHANNELS=CHANNELS, CHUNK=CHUNK)
     fig_par=make_fig()
     fig_par[0].show()
+    STREAM=make_stream(CHANNELS=CHANNELS, CHUNK=CHUNK)
     read_stream_data(STREAM,CHUNK,RATE,5*60,fig_par)
     
 
-    STREAM.stop_stream()
-    STREAM.close()
+    # STREAM.stop_stream()
+    # STREAM.close()
     
     # freq=np.arange(100,7000,10)    
     
@@ -122,7 +147,6 @@ def main():
     #     for f in freq:
     #         read_test_data(np.array([4000]),RATE,fig_par)
     #         read_test_data(f,RATE,fig_par)
-        
 
 
 main()
